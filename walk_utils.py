@@ -24,7 +24,7 @@ def walk(obj,
 
     * maybe not arbitrary - but probably anything that can be pickled (:
     """
-    seen_ids = set()
+    parent_ids = set()
 
     def perform_walk(obj, ignore_first_obj):
         """
@@ -41,16 +41,21 @@ def walk(obj,
                 ignore[0] = False
                 return None
             else:
-                if id(obj) in seen_ids:
+                if id(obj) in parent_ids:
                     raise CyclicWalkException(
                         "Cannot walk recursive structures")
-                else:
-                    seen_ids.add(id(obj))
+
+                # add id to list of parent ids, to watch for cycles
+                parent_ids.add(id(obj))
 
                 prewalked = prewalk_fn(obj)
                 inner_walked = perform_walk(obj=prewalked,
                                             ignore_first_obj=True)
                 postwalked = postwalk_fn(inner_walked)
+
+                # pop id off the set of ids
+                parent_ids.remove(id(obj))
+
                 # TODO does this really need to be converted to a string
                 # seems like it does for python2?
                 # base64 encoding to avoid unsafe string errors
@@ -82,15 +87,18 @@ def collection_walk(obj,
     """
     like walk, but more efficient while only working on (predefined)
     collections
+
+    NOTE: does not talk in the same order as walk
     """
-    seen_ids = set()
+    parent_ids = set()
 
     def perform_walk(obj):
-        if id(obj) in seen_ids:
+        if id(obj) in parent_ids:
             raise CyclicWalkException(
                 "Cannot walk recursive structures")
-        else:
-            seen_ids.add(id(obj))
+
+        # add id to list of parent ids, to watch for cycles
+        parent_ids.add(id(obj))
 
         prewalked = prewalk_fn(obj)
 
@@ -110,7 +118,12 @@ def collection_walk(obj,
         else:
             inner_walked = prewalked
 
-        return postwalk_fn(inner_walked)
+        postwalked = postwalk_fn(inner_walked)
+
+        # pop id off the set of ids
+        parent_ids.remove(id(obj))
+
+        return postwalked
 
     return perform_walk(obj)
 
