@@ -46,7 +46,6 @@ def walk(prewalk_fn,
                 inner_walked = perform_walk(obj=prewalked,
                                             ignore_first_obj=True)
                 postwalked = postwalk_fn(inner_walked)
-                # return postwalked
                 # TODO does this really need to be converted to a string
                 # seems like it does for python2?
                 # base64 encoding to avoid unsafe string errors
@@ -54,7 +53,6 @@ def walk(prewalk_fn,
                     pickle.dumps(postwalked, protocol=protocol))
 
         def persistent_load(persid):
-            # return persid
             return pickle.loads(base64.urlsafe_b64decode(persid))
 
         src = io.BytesIO()
