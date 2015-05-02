@@ -6,12 +6,17 @@ import base64
 class CyclicWalkException(Exception):
     pass
 
+
+def _identity(e):
+    return e
+
+
 # ############################## walk w/ pickle ##############################
 
 
-def walk(prewalk_fn,
-         postwalk_fn,
-         obj,
+def walk(obj,
+         prewalk_fn=_identity,
+         postwalk_fn=_identity,
          protocol=pickle.HIGHEST_PROTOCOL):
     """
     walks an arbitrary* python object using pickle.Pickler with a prewalk
@@ -71,11 +76,9 @@ def walk(prewalk_fn,
 # ############################ collection walking ############################
 
 
-def _identity(e):
-    return e
-
-
-def collection_walk(prewalk_fn, postwalk_fn, obj):
+def collection_walk(obj,
+                    prewalk_fn=_identity,
+                    postwalk_fn=_identity):
     """
     like walk, but more efficient while only working on (predefined)
     collections
@@ -112,9 +115,9 @@ def collection_walk(prewalk_fn, postwalk_fn, obj):
     return perform_walk(obj)
 
 
-def collection_prewalk(prewalk_fn, obj):
-    return collection_walk(prewalk_fn, _identity, obj)
+def collection_prewalk(obj, prewalk_fn):
+    return collection_walk(obj, prewalk_fn=prewalk_fn)
 
 
-def collection_postwalk(postwalk_fn, obj):
-    return collection_walk(_identity, postwalk_fn, obj)
+def collection_postwalk(obj, postwalk_fn):
+    return collection_walk(obj, postwalk_fn=postwalk_fn)
