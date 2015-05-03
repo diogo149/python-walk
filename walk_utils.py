@@ -7,6 +7,17 @@ class CyclicWalkException(Exception):
     pass
 
 
+class DoneWalkingException(Exception):
+
+    """
+    exception to signify that the returned data should no longer be walked
+    should only be thrown in a prewalk function
+    """
+
+    def __init__(self, data):
+        self.data = data
+
+
 def _identity(e):
     return e
 
@@ -48,10 +59,14 @@ def walk(obj,
                 # add id to list of parent ids, to watch for cycles
                 parent_ids.add(id(obj))
 
-                prewalked = prewalk_fn(obj)
-                inner_walked = perform_walk(obj=prewalked,
-                                            ignore_first_obj=True)
-                postwalked = postwalk_fn(inner_walked)
+                try:
+                    prewalked = prewalk_fn(obj)
+                except DoneWalkingException as e:
+                    postwalked = e.data
+                else:
+                    inner_walked = perform_walk(obj=prewalked,
+                                                ignore_first_obj=True)
+                    postwalked = postwalk_fn(inner_walked)
 
                 # pop id off the set of ids
                 parent_ids.remove(id(obj))
@@ -100,25 +115,29 @@ def collection_walk(obj,
         # add id to list of parent ids, to watch for cycles
         parent_ids.add(id(obj))
 
-        prewalked = prewalk_fn(obj)
-
-        # TODO add more collections
-        # eg. namedtuple, ordereddict, numpy array
-        # TODO maybe use prewalked.__class__ to construct new instance of same
-        # collection
-        if isinstance(prewalked, list):
-            inner_walked = [perform_walk(item) for item in prewalked]
-        elif isinstance(prewalked, dict):
-            inner_walked = {perform_walk(key): perform_walk(value)
-                            for key, value in prewalked.items()}
-        elif isinstance(prewalked, tuple):
-            inner_walked = tuple([perform_walk(item) for item in prewalked])
-        elif isinstance(prewalked, set):
-            inner_walked = {perform_walk(item) for item in prewalked}
+        try:
+            prewalked = prewalk_fn(obj)
+        except DoneWalkingException as e:
+            postwalked = e.data
         else:
-            inner_walked = prewalked
+            # TODO add more collections
+            # eg. namedtuple, ordereddict, numpy array
+            # TODO maybe use prewalked.__class__ to construct new instance of
+            # same collection
+            if isinstance(prewalked, list):
+                inner_walked = [perform_walk(item) for item in prewalked]
+            elif isinstance(prewalked, dict):
+                inner_walked = {perform_walk(key): perform_walk(value)
+                                for key, value in prewalked.items()}
+            elif isinstance(prewalked, tuple):
+                inner_walked = tuple([perform_walk(item)
+                                      for item in prewalked])
+            elif isinstance(prewalked, set):
+                inner_walked = {perform_walk(item) for item in prewalked}
+            else:
+                inner_walked = prewalked
 
-        postwalked = postwalk_fn(inner_walked)
+            postwalked = postwalk_fn(inner_walked)
 
         # pop id off the set of ids
         parent_ids.remove(id(obj))
